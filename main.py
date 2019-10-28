@@ -1,8 +1,10 @@
 from flask import Flask, request, jsonify, abort
+from flask_cors import CORS
 from koinu import conv2
 import os
 
 app = Flask(__name__)
+CORS(app)
 
 @app.route('/api/nlp/<string:NLPSymbol>', methods=["POST"])
 def nlp(NLPSymbol):
