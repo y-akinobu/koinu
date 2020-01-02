@@ -4,9 +4,9 @@ import pegpy
 peg = pegpy.grammar('cj.tpeg')
 parser = pegpy.generate(peg)
 
-tree = parser('跳ね返り係数は0.5')
+tree = parser('色はレモン')
 # print(repr(tree))
-print('@debug(input) ', list(tree))
+print('@debug(input): ', list(tree))
 
 property = {'色': 'fillStyle', 
             # '形': 'shape',
@@ -27,6 +27,38 @@ property = {'色': 'fillStyle',
             '反発係数': 'restitution'}
 
 fillStyle = {'赤': '#e60033',
+             '青': '#0095d9',
+             '白': '#ffffff',
+             '緑': '#3eb370',
+             '黒': '#2b2b2b',
+             '紫': '#884898',
+             '黄緑': '#b8d200',
+             '桜色': '#fef4f4',
+             '桃色': '#f09199',
+             '褐色': '#4d4c61',
+             '水色': '#bce2e8',
+             '紺色': '#223a70',
+             '橙色': '#ee7800',
+             '肌色': '#fce2c4',
+             '黄色': '#ffd900',
+             '灰色': '#7d7d7d',
+             '金色': '#e6b422',
+             'レッド': '#ea5550',
+             'ホワイト': '#ffffff',
+             'クリーム': '#e3d7a3',
+             'アイボリー': '#f8f4e6',
+             'イエロー': '#ffdc00',
+             'パープル': '#9b72b0',
+             'ブラウン': '#8f6552',
+             'シアン': '#00a1e9',
+             'マゼンタ': '#e4007f',
+             'シルバー': '#c9caca',
+             'オレンジ': '#ee7800',
+             'ブルー': '#0075c2',
+             'グリーン': '#00a960',
+             'グレイ': '#7d7d7d',
+             'ベージュ': '#eedcb3',
+             'ブラック': '#000000',
              'ピンク': '#f5b2b2'}
 
 angle = {}
@@ -67,17 +99,33 @@ class Let(Expr):
       model = KeyedVectors.load_word2vec_format(model_dir, binary=True)
       if self.left not in model:
         return None
-      sim_max = 0.0
-      sim_word = None
+      sim_key_max = 0.0
+      sim_key = None
       for word in list(property.keys()):
         sim = model.similarity(word, self.left)
-        if sim > sim_max:
-          sim_max = sim
-          sim_word = word
-      key = property[sim_word]
-    
-    if self.right == '赤':
-      value = '赤'
+        if sim > sim_key_max:
+          sim_key_max = sim
+          sim_key = word
+      key = property[sim_key]
+
+    if key == 'fillStyle':
+      if self.right in fillStyle:
+        value = fillStyle[self.right]
+      else:
+        from gensim.models import KeyedVectors
+        model = KeyedVectors.load_word2vec_format(model_dir, binary=True)
+        if self.right not in model:
+          return None
+        sim_value_max = 0.0
+        sim_value = None
+        for word in list(fillStyle.keys()):
+          sim = model.similarity(word, self.right)
+          if sim > sim_value_max:
+            sim_value_max = sim
+            sim_value = word
+        print('@debug(sim_value): ', sim_value)
+        print('@debug(sim_value_max): ', sim_value_max)
+        value = fillStyle[sim_value]
     
     return key, value
 
@@ -130,7 +178,7 @@ class Verb(Expr):
 
 def conv(tree) :
   if tree == 'S':
-    print('@debug(str) ', str(tree))
+    print('@debug(str): ', str(tree))
     if tree[0] == 'NounChunk' and tree[1] == 'NounChunk':
       left = tree[0]
       right = tree[1]
