@@ -4,9 +4,13 @@ import pegpy
 peg = pegpy.grammar('cj.tpeg')
 parser = pegpy.generate(peg)
 
-tree = parser('色はレモン')
+tree = parser('静止する')
 # print(repr(tree))
 print('@debug(input): ', list(tree))
+
+# value の推論update
+# @debug(input):  [[#NounChunk [#Noun '固定']]]
+# 形容詞副詞まわり
 
 property = {'色': 'fillStyle', 
             # '形': 'shape',
@@ -159,12 +163,15 @@ class Verb(Expr):
           sim_max = sim
           sim_word = word
       key = property[sim_word]
+      print('@debug(key): ', key)
 
     if key == 'restitution':
       if self.neg == True:
         value = restitution['neg']
       else:
         value = restitution['pos']
+
+    value = 'xxx'
 
     return key, value
 
@@ -179,31 +186,36 @@ class Verb(Expr):
 def conv(tree) :
   if tree == 'S':
     print('@debug(str): ', str(tree))
-    if tree[0] == 'NounChunk' and tree[1] == 'NounChunk':
-      left = tree[0]
-      right = tree[1]
-      return Let(conv(left[0]), str(right))
 
-    if tree[0] == 'Adverb' and tree[1] == 'VerbChunk':
-      # e.g.: [#Adverb 'よく'][#VerbChunk[#Verb1 '跳ね'][#Do 'る']]
-      # e.g.: [#Adverb '全く'][#VerbChunk[#Verb1 '跳ね'][#DoNot 'ない']]
-      # e.g.: [#Adverb 'あまり'][#VerbChunk[#Verb1 '跳ね'][#DoNot 'ない']]
+    # Chunk の組み合わせ
+    if len(tree) > 1:
+      if tree[0] == 'NounChunk' and tree[-1] == 'NounChunk':
+        left = tree[0]
+        right = tree[-1]
+        return Let(conv(left[0]), str(right))
 
-      return 0
+      if tree[0] == 'Adverb' and tree[1] == 'VerbChunk':
+        # e.g.: [#Adverb 'よく'][#VerbChunk[#Verb1 '跳ね'][#Do 'る']]
+        # e.g.: [#Adverb '全く'][#VerbChunk[#Verb1 '跳ね'][#DoNot 'ない']]
+        # e.g.: [#Adverb 'あまり'][#VerbChunk[#Verb1 '跳ね'][#DoNot 'ない']]
+
+        return 0
 
     # e.g.: [#NounChunk[#Noun '色'][#Subject 'は']][#AdjChunk[#Adj '濃'][#Base 'い']][#NounChunk[#Noun '赤']]
 
-    
     return conv(tree[0])
 
+
+  # Chunk 単体
   if tree == 'AdjChunk':
     # e.g.: [#AdjChunk[#Adjv '滑らか'][#Be 'な']]
     return conv(tree[0])
+
   if tree == 'VerbChunk':
     # e.g.: [#VerbChunk[#Verb1 '跳ね'][#Do 'る']]
     # e.g.: [#VerbChunk[#Verb1 '跳ね'][#DoNot 'ない']]    
     neg = False
-    if tree[len(tree)-1] == 'DoNot' or tree[len(tree)-1] == 'DidNot':
+    if tree[-1] == 'DoNot' or tree[-1] == 'DidNot':
       neg = True
     return Verb(conv(tree[0]), neg)
 
@@ -211,7 +223,13 @@ def conv(tree) :
     # e.g.: [#NounChunk [#Noun '色'] [#Subject 'は']]
     return conv(tree[0])
 
-  if tree == 'Noun':
+
+  # 品詞
+  if tree == 'Adj':
+    return str(tree)
+  if tree == 'Adjv':
+    return str(tree)
+  if tree == 'Adverb':
     return str(tree)
 
   if tree == 'VerbKA':
@@ -245,13 +263,10 @@ def conv(tree) :
     tree = str(tree) + 'る'
     return str(tree)
 
-  # [TODO:] 修飾語の処理
-  if tree == 'Adj':
+  if tree == 'Noun':
     return str(tree)
-  if tree == 'Adjv':
-    return str(tree)
-  if tree == 'Adverb':
-    return str(tree)
+    # return Verb(str(tree), neg=Fals1e)
+
   
 e = conv(tree)
 c = e.translate()
