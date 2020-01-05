@@ -73,7 +73,8 @@ NounDo =
 /* コードは名詞扱い */
 
 Code = {
-    [A-Za-z0-9]+
+    // [A-Za-z0-9]+
+    [A-Za-z0-9.(){}, +\-*/%\\]+
     #Code
 }
 
@@ -109,20 +110,6 @@ HiraNoun = {
 活用順にしており、活用語尾が同じものまとめている
 */
 
-example Sentence 歩く
-example Sentence 認める
-example Sentence 会う
-example Sentence 止む
-example Sentence 止まる
-example Sentence 止める
-
-example Sentence 話したく思う    // 連文節
-example Sentence 攻撃され始めた
-example Sentence 話し終わる
-example Sentence 駆け上がる
-example Sentence 立ち止まる
-example Sentence 止まる
-example Sentence 止まらない
 
 /*
 動詞の未然形活用
@@ -260,26 +247,6 @@ VerbSuffix1 = // 着る
     / { 'られ' 'る'? #Been }
     / { 'よう' / 'る' / 'て' #Do }
 
-example Sentence 赤いボール
-example Sentence 赤かったボール
-example Sentence うるさい人
-example Sentence うるさかった人
-example Sentence うるさくない人
-example Sentence うるさかろう人
-example Sentence うるさそうだった人
-example Sentence うるさいらしい人
-example Sentence うるさいでしょう
-example Sentence 赤くないボール
-example Sentence 赤くなく青いボール
-example Sentence 赤くかっこいい人
-example Sentence 健康な人
-example Sentence 健康だった人
-example Sentence 健康でしょう
-example Sentence ぞっこんだ
-example Sentence なめいもの
-example Sentence なめかったもの
-example Sentence なめらかだ
-example Sentence なめらかなやわらかい布
 
 AdjvChunk =
     / { Adj AdjSuffix #AdjChunk }

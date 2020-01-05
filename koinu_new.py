@@ -3,13 +3,13 @@ import pegpy
 #from pegpy.tpeg import ParseTree
 peg = pegpy.grammar('cj.tpeg')
 parser = pegpy.generate(peg)
+model_dir = 'nlp_dict/entity_vector.model.bin'
 
-tree = parser('静止する')
+tree = parser('赤')
 # print(repr(tree))
 print('@debug(input): ', list(tree))
 
-# value の推論update
-# @debug(input):  [[#NounChunk [#Noun '固定']]]
+# 赤と赤色（赤は赤でマッピング、赤色だと黄色でマッピング）
 # 形容詞副詞まわり
 
 property = {'色': 'fillStyle', 
@@ -22,11 +22,11 @@ property = {'色': 'fillStyle',
             # '質量': 'mass',
             # '密度': 'density',
             # '速度': 'velocity',
-            '摩擦': 'friction',
+            # '摩擦': 'friction',
             # '空気摩擦': 'frictionAir',         # モデル登録なし
             # '静止摩擦力': 'frictionStatic',    # モデル登録なし
-            '固定': 'isStatic',
             # 'センサー': 'isSensor',
+            '固定': 'isStatic',
             '跳ねる': 'restitution',
             '反発係数': 'restitution'}
 
@@ -65,10 +65,10 @@ fillStyle = {'赤': '#e60033',
              'ブラック': '#000000',
              'ピンク': '#f5b2b2'}
 
-angle = {}
+# angle = {}
 
-friction = {'pos': '0.001',
-            'neg': '0.0000001'}
+# friction = {'pos': '0.001',
+#             'neg': '0.0000001'}
 
 isStatic = {'pos': 'True',
             'neg': 'False'}
@@ -78,8 +78,6 @@ restitution = {'more': '1.2',
                'little': '0.7',
                'neg': '0.0'}
 
-
-model_dir = 'nlp_dict/entity_vector.model.bin'
 
 class Expr(object):
   pass
@@ -130,6 +128,13 @@ class Let(Expr):
         print('@debug(sim_value): ', sim_value)
         print('@debug(sim_value_max): ', sim_value_max)
         value = fillStyle[sim_value]
+
+    if key == 'restitution':
+      try:
+        value = float(self.right)
+      except:
+        value = 1.0
+      value = str(value)
     
     return key, value
 
@@ -163,15 +168,38 @@ class Verb(Expr):
           sim_max = sim
           sim_word = word
       key = property[sim_word]
-      print('@debug(key): ', key)
+      # print('@debug(key): ', key)
+
+    if key == 'fillStyle':
+      if self.domain in fillStyle:
+        value = fillStyle[self.domain]
+      else:
+        from gensim.models import KeyedVectors
+        model = KeyedVectors.load_word2vec_format(model_dir, binary=True)
+        if self.domain not in model:
+          return None
+        sim_value_max = 0.0
+        sim_value = None
+        for word in list(fillStyle.keys()):
+          sim = model.similarity(word, self.domain)
+          if sim > sim_value_max:
+            sim_value_max = sim
+            sim_value = word
+        print('@debug(sim_value): ', sim_value)
+        print('@debug(sim_value_max): ', sim_value_max)
+        value = fillStyle[sim_value]
 
     if key == 'restitution':
-      if self.neg == True:
+      if self.neg:
         value = restitution['neg']
       else:
         value = restitution['pos']
 
-    value = 'xxx'
+    if key == 'isStatic':
+      if self.neg:
+        value = isStatic['neg']
+      else:
+        value = isStatic['pos']
 
     return key, value
 
@@ -221,6 +249,8 @@ def conv(tree) :
 
   if tree == 'NounChunk':
     # e.g.: [#NounChunk [#Noun '色'] [#Subject 'は']]
+    if tree[-1] == 'Noun':
+      return Verb(str(tree[-1]), neg=False)
     return conv(tree[0])
 
 
