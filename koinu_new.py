@@ -5,12 +5,34 @@ peg = pegpy.grammar('cj.tpeg')
 parser = pegpy.generate(peg)
 model_dir = 'nlp_dict/entity_vector.model.bin'
 
-tree = parser('赤')
+tree = parser('跳ねている')
 # print(repr(tree))
 print('@debug(input): ', list(tree))
 
 # 赤と赤色（赤は赤でマッピング、赤色だと黄色でマッピング）
-# 形容詞副詞まわり
+
+degree_dict = {'たいして': 'little',
+               'さほど': 'little',
+               'あまり': 'little',
+               'そんなに': 'little',
+               'ちっとも': 'neg',
+               '少しも': 'neg',
+               '全然': 'neg',
+               '全く': 'neg',
+               '決して': 'neg',
+
+               'よく': 'more',
+               'かなり': 'more',
+               'けっこう': 'more',
+               '相当': 'more',
+               'めちゃくちゃ': 'more',
+               'めっちゃ': 'more',
+               '少し': 'little',
+               'ちょっぴり': 'little',
+               'ちょっと': 'little',
+               'たくさん': 'more',
+               'いっぱい': 'more',
+               'たっぷり': 'more'}
 
 property = {'色': 'fillStyle', 
             # '形': 'shape',
@@ -147,9 +169,10 @@ class Let(Expr):
 class Verb(Expr):
   key: str
   value: str
-  def __init__(self, domain: str, neg: bool):
+  def __init__(self, domain: str, flag_neg: bool, degree: str):
     self.domain = domain
-    self.neg = neg
+    self.flag_neg = flag_neg
+    self.degree = degree
 
   def translate(self):
     # left, right から  key, value に変換する
@@ -190,13 +213,19 @@ class Verb(Expr):
         value = fillStyle[sim_value]
 
     if key == 'restitution':
-      if self.neg:
+      if self.flag_neg:
         value = restitution['neg']
+        if self.degree == 'little':
+          value = restitution['little']
       else:
         value = restitution['pos']
+        if self.degree == 'little':
+          value = restitution['little']
+        if self.degree == 'more':
+          value = restitution['more']
 
     if key == 'isStatic':
-      if self.neg:
+      if self.flag_neg:
         value = isStatic['neg']
       else:
         value = isStatic['pos']
@@ -222,14 +251,22 @@ def conv(tree) :
         right = tree[-1]
         return Let(conv(left[0]), str(right))
 
-      if tree[0] == 'Adverb' and tree[1] == 'VerbChunk':
+      if tree[0] == 'Adverb' and tree[-1] == 'VerbChunk':
         # e.g.: [#Adverb 'よく'][#VerbChunk[#Verb1 '跳ね'][#Do 'る']]
         # e.g.: [#Adverb '全く'][#VerbChunk[#Verb1 '跳ね'][#DoNot 'ない']]
         # e.g.: [#Adverb 'あまり'][#VerbChunk[#Verb1 '跳ね'][#DoNot 'ない']]
+        degree = 'pos'
+        if str(tree[0]) in degree_dict:
+          degree = degree_dict[str(tree[0])]
 
-        return 0
+        tree = tree[-1]
+        flag_neg = 0
+        if tree[-1] == 'DoNot' or tree[-1] == 'DidNot':
+          flag_neg = 1
+        
+        return Verb(conv(tree[0]), flag_neg, degree)
 
-    # e.g.: [#NounChunk[#Noun '色'][#Subject 'は']][#AdjChunk[#Adj '濃'][#Base 'い']][#NounChunk[#Noun '赤']]
+    # !!!e.g.: [#NounChunk[#Noun '色'][#Subject 'は']][#AdjChunk[#Adj '濃'][#Base 'い']][#NounChunk[#Noun '赤']]
 
     return conv(tree[0])
 
@@ -241,26 +278,27 @@ def conv(tree) :
 
   if tree == 'VerbChunk':
     # e.g.: [#VerbChunk[#Verb1 '跳ね'][#Do 'る']]
-    # e.g.: [#VerbChunk[#Verb1 '跳ね'][#DoNot 'ない']]    
-    neg = False
+    # e.g.: [#VerbChunk[#Verb1 '跳ね'][#DoNot 'ない']] 
+    flag_neg = 0
     if tree[-1] == 'DoNot' or tree[-1] == 'DidNot':
-      neg = True
-    return Verb(conv(tree[0]), neg)
+      flag_neg = 1
+    
+    return Verb(conv(tree[0]), flag_neg, degree='pos')
 
   if tree == 'NounChunk':
     # e.g.: [#NounChunk [#Noun '色'] [#Subject 'は']]
     if tree[-1] == 'Noun':
-      return Verb(str(tree[-1]), neg=False)
+      return Verb(str(tree[-1]), flag_neg=0, degree='pos')
     return conv(tree[0])
 
 
   # 品詞
   if tree == 'Adj':
-    return str(tree)
+    return Verb(str(tree), flag_neg=0, degree='pos')
   if tree == 'Adjv':
-    return str(tree)
+    return Verb(str(tree), flag_neg=0, degree='pos')
   if tree == 'Adverb':
-    return str(tree)
+    return Verb(str(tree), flag_neg=0, degree='pos')
 
   if tree == 'VerbKA':
     tree = str(tree) + 'く'
@@ -295,7 +333,9 @@ def conv(tree) :
 
   if tree == 'Noun':
     return str(tree)
-    # return Verb(str(tree), neg=Fals1e)
+
+  if tree == 'err':
+    return None
 
   
 e = conv(tree)
